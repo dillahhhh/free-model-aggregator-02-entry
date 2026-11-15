@@ -110,8 +110,8 @@ function log(message: string): void {
  */
 const ROUTING_PREFERENCE: Readonly<Record<string, readonly string[]>> = {
   json: ['openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/google/gemma-4-31b-it:free'],
-  tools: ['openrouter/thinkingmachines/inkling-2-small:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
-  plain: ['openrouter/thinkingmachines/inkling-2-small:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
+  tools: ['openrouter/thinkingmachines/inkling-2-small:free', 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
+  plain: ['openrouter/thinkingmachines/inkling-2-small:free', 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
 };
 
 /** The requirement class a prompt belongs to, for the preference table. */
