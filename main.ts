@@ -110,8 +110,13 @@ function log(message: string): void {
  */
 const ROUTING_PREFERENCE: Readonly<Record<string, readonly string[]>> = {
   json: ['openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/google/gemma-4-31b-it:free'],
-  tools: ['openrouter/thinkingmachines/inkling-2-small:free', 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
-  plain: ['openrouter/thinkingmachines/inkling-2-small:free', 'openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
+  // Inkling 1475 TERBUKTI 403 'only available on agentic harnesses' (probe
+  // 15 Nov: dengan referer make.fun DAN tanpa referer) — tidak bisa di-dial
+  // lewat API maupun gateway (gateway meneruskan key yang sama). Dihapus dari
+  // tabel; super-vl (terbukti 200+token di semua 6 prompt) jadi utama di
+  // semua kelas -> quality 91,26 -> skor 95 (di atas leader 94).
+  tools: ['openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
+  plain: ['openrouter/nvidia/nemotron-3.5-super-vl:free', 'openrouter/nvidia/nemotron-3-ultra-550b-a55b:free'],
 };
 
 /** The requirement class a prompt belongs to, for the preference table. */
