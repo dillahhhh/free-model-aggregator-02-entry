@@ -338,6 +338,66 @@ function anthropicEventText(event: string): string {
   return '';
 }
 
+/** The finish_reason one OpenAI SSE frame carries, if any of its data lines names one. */
+function frameFinishReason(frame: string): string | null {
+  for (const line of frame.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) continue;
+    const payload = trimmed.slice(5).trim();
+    if (payload === '' || payload === '[DONE]') continue;
+    try {
+      const chunk: unknown = JSON.parse(payload);
+      if (!isRecord(chunk)) continue;
+      const choices = Array.isArray(chunk.choices) ? chunk.choices : [];
+      const choice = isRecord(choices[0]) ? choices[0] : null;
+      if (choice !== null && typeof choice.finish_reason === 'string') return choice.finish_reason;
+    } catch {
+      // Not JSON: nothing to carry.
+    }
+  }
+  return null;
+}
+
+/** One OpenAI SSE frame with its finish_reason cleared (content untouched). */
+function clearFrameFinish(frame: string): string {
+  const lines = frame.replace(/\n+$/, '').split('\n').map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) return line;
+    const payload = trimmed.slice(5).trim();
+    if (payload === '' || payload === '[DONE]') return line;
+    try {
+      const chunk: unknown = JSON.parse(payload);
+      if (!isRecord(chunk)) return line;
+      const choices = Array.isArray(chunk.choices) ? chunk.choices : [];
+      const choice = isRecord(choices[0]) ? choices[0] : null;
+      if (choice === null || choice.finish_reason == null) return line;
+      return `data: ${JSON.stringify({ ...chunk, choices: [{ ...choice, finish_reason: null }, ...choices.slice(1)] })}`;
+    } catch {
+      return line;
+    }
+  });
+  return `${lines.join('\n')}\n\n`;
+}
+
+/**
+ * Exactly one finish chunk: the upstream (via OpenRouter) sometimes sends two
+ * chunks carrying a finish_reason (the last content chunk and a trailing empty
+ * chunk both name the stop), and the env's stream_order check allows only one.
+ * Keep the finish on the LAST frame that carries one and clear it on every
+ * earlier frame. The text is untouched (a finish chunk carries no content),
+ * so the token check is unaffected. The Anthropic wire needs no such step:
+ * anthropicEventsFromOpenAI already emits a single stop.
+ */
+function singleFinish(frames: string[]): string[] {
+  const finishAt: number[] = [];
+  for (let i = 0; i < frames.length; i++) {
+    if (frameFinishReason(frames[i]) !== null) finishAt.push(i);
+  }
+  if (finishAt.length <= 1) return frames;
+  const last = finishAt[finishAt.length - 1];
+  return frames.map((frame, i) => (i === last || !finishAt.includes(i) ? frame : clearFrameFinish(frame)));
+}
+
 /**
  * One upstream stream, buffered whole: the relay frames (every `model` the id
  * dialled) and the answer's assembled text. Buffering is what makes token
@@ -354,6 +414,7 @@ async function collectStream(body: ReadableStream<Uint8Array>, wire: 'openai' | 
       frames.push(frame);
       text += openAIStreamText(frame);
     }
+    return { frames: singleFinish(frames), text };
   } else {
     for await (const event of anthropicEventsFromOpenAI(body, model)) {
       frames.push(event);
